@@ -31,7 +31,7 @@ def runcmd(cmd)
     return stdout
 
 ### Tail the log file and get the output
-tail = "tail -n " + n + " 50 /home/steam/valheim/valheim_log.txt"
+tail = "tail -n " + n + " /home/steam/valheim/valheim_log.txt"
 log = runcmd(tail)
 
 ### Assemble alert text and data
