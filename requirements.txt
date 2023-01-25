@@ -1,0 +1,4 @@
+configparser==5.2.0
+discord==1.7.3
+discord.py==1.7.3
+requests==2.27.1
