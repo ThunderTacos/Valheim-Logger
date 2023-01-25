@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 
 """
-This script is intended to find all connections to a server in the past x minutes, then post the found connections to a Discord webhook.
+This script is intended to find all connections to a server in the past x minutes, then post the found connections to a Discord webhook. It will tail the last n amount
+of lines from the valheim log to find any connect or disconnect messages.
 
-The script tails the /home/steam/valheim/valheim_log.txt file for the last 50 lines, and checks for any connect or disconnect messages. If it finds some, it will send them to Discord webhook.
-
-This script is designed to run every 5 minutes to ensure:
-    1) Speed - parsing the entire valheim_log.txt file every time we want to check for a connect or disconnect would take too many resources.
-    2) No (dis)connects are missed. By tailing the last 50 lines of valheim_log.txt every 5 minutes, we should have a high degree of confidence nothing is missed
+By ThunderTacos
 
 """
 import subprocess
@@ -63,7 +60,9 @@ etext = "** disconnected from " + server + "!"
 uctext = "**Unknown user** connected to " + server + "!"
 uetext = "**Unknown user** disconnected from " + server + "!"
 
-# Check if the following line is in the log:
+### Check the output file for any matches and assemble alert(s)
+
+# Checking if the following line is in the log:
 # Got connection SteamID xxxxxxxxxxxxxxx
 
 # Assumes multiple unknown connections did not occur simultaneously
