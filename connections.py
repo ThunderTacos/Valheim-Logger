@@ -13,60 +13,114 @@ This script is designed to run every 5 minutes to ensure:
 import subprocess
 import sys
 import configparser as cp
-from discord import SyncWebhook
+import requests
+from discord import Webhook, RequestsWebhookAdapter
 
 ### Import configuration from config.ini file and define functions
-config = cp.ConfigParser()
-config.read('config.ini')
-steam_ids = config['SteamIDs']
-URL = config['DEFAULTS']['WebhookURL']
-logdir = config['DEFAULTS']['LogDir']
-server = config['DEFAULTS']['servername']
-n = config['DEFAULTS']['Tail_lines']
 
-def runcmd(cmd)
+confdir = '/home/steam/valheim/connections_config.ini'
+try:
+    config = cp.ConfigParser()
+    config.read(confdir)
+    steam_ids = config['SteamIDs']
+    steam_ids_list = list(steam_ids.values())
+    steam_names_list = list(steam_ids.keys())
+    URL = config['DEFAULTS']['WebhookURL']
+    logdir = config['DEFAULTS']['LogDir']
+    server = config['DEFAULTS']['servername']
+    n = config['DEFAULTS']['Tail_lines']
+except:
+    print("Configuration file is missing, incorrect, or corrupt. Quitting...")
+    sys.exit(1)
+
+def runcmd(cmd):
     subprocess.Popen(cmd, shell=True)
     r = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
     stdout, stderr = r.communicate()
     return stdout
 
+def set_connect(name, flag):
+    config['Connections'][name] = str(flag)
+    with open(confdir, 'w') as cfg:
+        config.write(cfg)
+
+def set_disconnect(name, flag):
+    config['Disconnects'][name] = str(flag)
+    with open(confdir, 'w') as cfg:
+        config.write(cfg)
+
 ### Tail the log file and get the output
-tail = "tail -n " + n + " /home/steam/valheim/valheim_log.txt"
-log = runcmd(tail)
+tail = "tail -n " + n + " " + logdir
+log = str(runcmd(tail))
 
 ### Assemble alert text and data
 new_con = "Got connection SteamID "
 end_con = "Closing socket "
 alert = []
-ctext = " connected to " + servername + "!"
-etext = " disconnected from " + servername + "!"
+bold="**"
+ctext = "** connected to " + server + "!"
+etext = "** disconnected from " + server + "!"
+uctext = "**Unknown user** connected to " + server + "!"
+uetext = "**Unknown user** disconnected from " + server + "!"
 
-if len(steam_ids) != 0:
-    for key in steam_ids.keys():
-        if (new_con + steam_ids[key]) in log:
-            text = key + ctext
-            alert.append(text)
-            continue
-        elif (end_con + steam_ids[keys]) in log:
-            text = key + etext
-            alert.append(text)
-            continue
-        elif new_con or end_con in log:
-            text = "Unkown user (dis)connected to " + servername + "."
-            alert.append(text)
+# Check if the following line is in the log:
+# Got connection SteamID xxxxxxxxxxxxxxx
+
+# Assumes multiple unknown connections did not occur simultaneously
+
+# Each successful alert writes a boolean flag to the config file, preventing alert spam
+# Any time the script does not find any alerts to send, it resets all those flags to False
+
+if new_con in log:
+    if len(steam_names_list) != 0:
+        for name in steam_names_list:
+            try:
+                if steam_ids[name] in log and config['Connections'][name] != "True":
+                    text = bold + name + ctext
+                    alert.append(text)
+                    set_connect(name, True)
+                else:
+                    continue
+            except KeyError:
+                set_connect(name, False)
+                continue
         else:
-            break
+            if len(alert) == 0 and "True" not in list(config['Connections'].values()):
+                alert.append(uctext)
     else:
-        if new_con or end_con in log:    
-            text = "Unkown user (dis)connected to " + servername + "."
-            alert.append(text)
+        alert.append(uctext)
+else:
+    for name in steam_names_list:
+        set_connect(name, False)
+
+if end_con in log:
+    if len(steam_names_list) != 0:
+        for name in steam_names_list:
+            try:
+                if steam_ids[name] in log and config['Disconnects'][name] != "True":
+                    text = bold + name + etext
+                    alert.append(text)
+                    set_disconnect(name, True)
+                else:
+                    continue
+            except KeyError:
+                set_disconnect(name, False)
+                continue
         else:
-            break
+            if len(alert) == 0 and "True" not in list(config['Disconnects'].values()):
+                alert.append(uetext)
+    else:
+        alert.append(uetext)
+else:
+    for name in steam_names_list:
+        set_disconnect(name, False)
+
+
 ### Post alert text to the Discord webhook
-webhook = SyncWebhook.from_url(URL)
+webhook = Webhook.from_url(URL, adapter=RequestsWebhookAdapter())
 
 if len(alert) == 0:
-    break
+    print("No alerts to post, quitting...")
     sys.exit(1)
 else:
     for text in alert:
