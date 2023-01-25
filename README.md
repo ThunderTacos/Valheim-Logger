@@ -1,6 +1,6 @@
 # Valheim-Logger
 
-This is a simple Python script designed for Linux-based Valheim Dedicated Servers. It will search the Valheim log to look for connect and disconnect messages from players. If it finds one, it will send a text alert to a Discod webhook.
+This is a simple Python script designed for Linux-based Valheim Dedicated Servers. It will search the Valheim log to look for connect and disconnect messages from players. If it finds one, it will send a text alert to a Discord webhook.
 
 ## Installation
 
